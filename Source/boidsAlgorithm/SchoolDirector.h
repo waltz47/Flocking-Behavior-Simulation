@@ -13,7 +13,6 @@ struct FBoidData
 public:
 	int32 id;
 	FVector location;
-	FRotator rotation;
 	FVector velocity;
 	FVector deltaV;
 };
@@ -40,23 +39,17 @@ public:
 	UPROPERTY(EditDefaultsOnly) UStaticMesh* unitMesh = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FVector areaExtent;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 maxUnits = 200;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) float maxVelocity = 2500.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 maxUnits = 2000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) float maxVelocity = 2000.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) float maxSteerF = 2000.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) float fCohesion = 1000.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) float distCohesion = 1500.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) float fSeparation = 10.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) float distSeparation = 500.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) float fAlignment = 10.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) float distAlignment = 600.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) float collisionRadius = 1500.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) float fCollision = 1500.f;
-
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite) float
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) float distCohesion = 1300.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) float fSeparation = 110.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) float distSeparation = 200.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) float fAlignment = 80.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) float distAlignment = 300.f;
 
 	UPROPERTY() TArray<FBoidData> boidData;
-	UPROPERTY() TArray<class ACollisionActor*> collisions;
 
 
 };

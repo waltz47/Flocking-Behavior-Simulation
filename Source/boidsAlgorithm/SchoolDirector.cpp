@@ -6,8 +6,7 @@
 #include "CollisionActor.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
-
-#define FLAG_AVOID 0
+#include "Runtime/Core/Public/Async/ParallelFor.h"
 // Sets default values
 ASchoolDirector::ASchoolDirector()
 {
@@ -23,12 +22,6 @@ void ASchoolDirector::BeginPlay()
 {
 	Super::BeginPlay();
 	if (unitMesh == nullptr) return;
-	TArray<AActor*> temp;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ACollisionActor::StaticClass(), temp);
-	for (AActor* actor : temp)
-	{
-		collisions.Add(Cast<ACollisionActor>(actor));
-	}
 	ISMComp = NewObject<UInstancedStaticMeshComponent>(this);
 	ISMComp->RegisterComponent();
 	ISMComp->SetStaticMesh(unitMesh);
@@ -50,7 +43,6 @@ void ASchoolDirector::BeginPlay()
 		spawnTransform.SetScale3D(scale3d);
 		boidData[i].id = ISMComp->AddInstance(spawnTransform);
 		boidData[i].location = spawnPosition;
-		boidData[i].rotation = spawnRotation;
 		boidData[i].velocity = (spawnRotation.Vector() * maxVelocity).GetClampedToMaxSize(maxVelocity);
 		boidData[i].velocity.Z = 0.f;
 		boidData[i].deltaV = FVector::ZeroVector;
@@ -65,13 +57,12 @@ void ASchoolDirector::Tick(float DeltaTime)
 	{
 		return;
 	}
-	FVector sep, coh, agn;
-	int32 sepN, cohN, agnN;
-	for (int32 i = 0; i < maxUnits; i++)
+	ParallelFor(maxUnits, [&](int32 i)
 	{
+		FVector sep, coh, agn;
+		int32 sepN, cohN, agnN;
 		sep = coh = agn = FVector::ZeroVector;
 		sepN = cohN = agnN = 0;
-
 		for (int32 j = 0; j < maxUnits; j++)
 		{
 			if (i ^ j)
@@ -112,28 +103,10 @@ void ASchoolDirector::Tick(float DeltaTime)
 			agn.Normalize();
 		}
 		boidData[i].deltaV = (fCohesion * coh + fSeparation * sep + fAlignment * agn);
-		FVector collF = FVector::ZeroVector;
-		int32 collN = 0;
-		for (ACollisionActor* collisionBox : collisions)
-		{
-			float dstToColl = FVector::Distance(boidData[i].location, collisionBox->GetActorLocation());
-			if (dstToColl <= collisionRadius && dstToColl > 1.f)
-			{
-				collN++;
-				collF += (collisionBox->GetActorLocation() - boidData[i].location);
-			}
-		}
-		if (FLAG_AVOID && collN)
-		{
-			collF /= collN;
-			collF *= -1.f;
-			collF.Normalize();
-			boidData[i].deltaV += fCollision * collF;
-		}
-		//boidData[i].deltaV = boidData[i].deltaV.GetClampedToMaxSize(maxSteerF);
+		boidData[i].deltaV = boidData[i].deltaV.GetClampedToMaxSize(maxSteerF);
 		boidData[i].deltaV.Z = 0.f;
-	}
-	for (int32 i = 0; i < maxUnits; i++)
+	});
+	ParallelFor(maxUnits, [&](int32 i)
 	{
 		boidData[i].velocity += (boidData[i].deltaV * DeltaTime);
 		boidData[i].velocity = boidData[i].velocity.GetClampedToMaxSize(maxVelocity);
@@ -142,26 +115,19 @@ void ASchoolDirector::Tick(float DeltaTime)
 
 		if (boidData[i].location.X > areaExtent.X || boidData[i].location.X < -areaExtent.X)
 		{
-			//boidData[i].location.X *= -1.f;
-			//boidData[i].location.X -= 2.f * boidData[i].velocity.X * DeltaTime;
 			boidData[i].velocity.X *= -1.f;
 		}
 		if (boidData[i].location.Y >= areaExtent.Y || boidData[i].location.Y < -areaExtent.Y)
 		{
-			//boidData[i].location.Y *= -1.f;
-			//boidData[i].location.Y -= 2.f * boidData[i].velocity.Y * DeltaTime;
 			boidData[i].velocity.Y *= -1.f;
 		}
 		if (boidData[i].location.Z >= areaExtent.Z || boidData[i].location.Z < -areaExtent.Z)
 		{
-			//boidData[i].location.Y *= -1.f;
-			//boidData[i].location.Y -= 2.f * boidData[i].velocity.Y * DeltaTime;
 			boidData[i].velocity.Z *= -1.f;
 		}
-
-
-		boidData[i].deltaV = FVector::ZeroVector;
-
+	});
+	for(int32 i=0;i<maxUnits;i++)
+	{
 		FTransform transform;
 		ISMComp->GetInstanceTransform(boidData[i].id, transform);
 		transform.SetLocation(boidData[i].location);
