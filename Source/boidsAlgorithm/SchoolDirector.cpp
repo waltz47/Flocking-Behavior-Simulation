@@ -6,6 +6,7 @@
 #include "CollisionActor.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
+#include "drawdebughelpers.h"
 #include "Runtime/Core/Public/Async/ParallelFor.h"
 // Sets default values
 ASchoolDirector::ASchoolDirector()
@@ -44,8 +45,19 @@ void ASchoolDirector::BeginPlay()
 		boidData[i].id = ISMComp->AddInstance(spawnTransform);
 		boidData[i].location = spawnPosition;
 		boidData[i].velocity = (spawnRotation.Vector() * maxVelocity).GetClampedToMaxSize(maxVelocity);
-		boidData[i].velocity.Z = 0.f;
+		//boidData[i].velocity.Z = 0.f;
 		boidData[i].deltaV = FVector::ZeroVector;
+	}
+
+	//https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
+	float phi = PI_VAL * (3.f - FMath::Sqrt(5.f));
+	for (int32 i = 0; i < NUM_COLLISION_VECTORS; i++) {
+		float y = 1 - (i / float(NUM_COLLISION_VECTORS - 1)) * 2;
+		float radius = FMath::Sqrt(1 - y * y);
+		float theta = phi * i;
+		float x = FMath::Cos(theta);
+		float z = FMath::Sin(theta);
+		spherePoints.Add(FVector(x, y, z));
 	}
 }
 
@@ -102,28 +114,52 @@ void ASchoolDirector::Tick(float DeltaTime)
 			agn /= agnN;
 			agn.Normalize();
 		}
-		boidData[i].deltaV = (fCohesion * coh + fSeparation * sep + fAlignment * agn);
+		//avoidance
+		FVector avoid = FVector::ZeroVector;
+		int32 avoidCnt = 0;
+		for (const FVector point : spherePoints) {
+			FVector t_vec = boidData[i].location + point;
+			if (CollisionCheck(GetWorld(), boidData[i].location, boidData[i].location + point * distAvoidance)) {
+				avoid += point;
+				avoidCnt++;
+			}
+		}
+		/*if (i == 0) {
+			UE_LOG(LogTemp, Warning, TEXT("Avoid cnt: %d"), avoidCnt);
+		}*/
+		if (avoidCnt) {
+			avoid /= avoidCnt;
+			avoid *= -1.f;
+			avoid.Normalize();
+		}
+
+
+
+		boidData[i].deltaV = (fCohesion * coh + fSeparation * sep + fAlignment * agn) + avoid * fAvoidance;
 		boidData[i].deltaV = boidData[i].deltaV.GetClampedToMaxSize(maxSteerF);
-		boidData[i].deltaV.Z = 0.f;
+		//boidData[i].deltaV.Z = 0.f;
 	});
 	ParallelFor(maxUnits, [&](int32 i)
 	{
 		boidData[i].velocity += (boidData[i].deltaV * DeltaTime);
 		boidData[i].velocity = boidData[i].velocity.GetClampedToMaxSize(maxVelocity);
-		boidData[i].velocity.Z = 0.f;
-		boidData[i].location += boidData[i].velocity * DeltaTime;
-
+		//boidData[i].velocity.Z = 0.f;
+		boidData[i].location = boidData[i].location + boidData[i].velocity * DeltaTime;
+		
 		if (boidData[i].location.X > areaExtent.X || boidData[i].location.X < -areaExtent.X)
 		{
 			boidData[i].velocity.X *= -1.f;
+			//boidData[i].location.X *= -1.f;
 		}
 		if (boidData[i].location.Y >= areaExtent.Y || boidData[i].location.Y < -areaExtent.Y)
 		{
 			boidData[i].velocity.Y *= -1.f;
+			//boidData[i].location.Y *= -1.f;
 		}
 		if (boidData[i].location.Z >= areaExtent.Z || boidData[i].location.Z < -areaExtent.Z)
 		{
 			boidData[i].velocity.Z *= -1.f;
+			//boidData[i].location.Z *= -1.f;
 		}
 	});
 	for(int32 i=0;i<maxUnits;i++)
@@ -133,9 +169,23 @@ void ASchoolDirector::Tick(float DeltaTime)
 		transform.SetLocation(boidData[i].location);
 		FVector vel = boidData[i].velocity;
 		vel.Normalize();
-		const FRotator tempRot = FRotationMatrix::MakeFromX(vel).Rotator() + FRotator(0.f, -90.f, 0.f);
-		transform.SetRotation(tempRot.Quaternion());
+		/*if (i == 0) {
+			UE_LOG(LogTemp, Warning, TEXT("%f %f %f"), vel.X, vel.Y, vel.Z);
+			DrawDebugLine(GetWorld(), boidData[i].location, boidData[i].location + boidData[i].velocity * 1000.f,FColor::Red, false, 0.1f, 0, 4.f);
+		}*/
+		FQuat rQuat = (boidData[i].velocity.Rotation() + FRotator(0.f, -90.f, 0.f)).Quaternion();
+		rQuat.Normalize();
+		transform.SetRotation(rQuat);
 		ISMComp->UpdateInstanceTransform(boidData[i].id, transform, false, (i == maxUnits - 1), false);
 	}
 }
 
+bool ASchoolDirector::CollisionCheck(UWorld* world, FVector start, FVector end)
+{
+	if (!world)
+		return false;
+	FHitResult hit;
+	//DrawDebugLine(world, start, end, FColor::Red, false, -1.f, 0, 1.f);
+	world->LineTraceSingleByChannel(hit, start, end, ECollisionChannel::ECC_GameTraceChannel1);
+	return hit.bBlockingHit;
+}

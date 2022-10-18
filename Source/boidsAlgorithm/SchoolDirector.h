@@ -6,6 +6,9 @@
 #include "GameFramework/Actor.h"
 #include "SchoolDirector.generated.h"
 
+#define NUM_COLLISION_VECTORS	40
+#define PI_VAL					3.1415
+
 USTRUCT()
 struct FBoidData
 {
@@ -38,6 +41,7 @@ public:
 	UPROPERTY() UInstancedStaticMeshComponent* ISMComp = nullptr;
 	UPROPERTY(EditDefaultsOnly) UStaticMesh* unitMesh = nullptr;
 
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FVector areaExtent;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 maxUnits = 2000;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) float maxVelocity = 2000.f;
@@ -48,8 +52,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) float distSeparation = 200.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) float fAlignment = 80.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) float distAlignment = 300.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) float distAvoidance = 2000.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) float fAvoidance = 1300.f;
 
 	UPROPERTY() TArray<FBoidData> boidData;
 
+	TArray<FVector> spherePoints;
+
+	static bool CollisionCheck(UWorld* world, FVector loc, FVector end);
 
 };

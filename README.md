@@ -6,15 +6,17 @@ Boids Algorithm Flocking simulation on Unreal Engine 4
  - Launch project
 # Simulation
 Settings to simulate flocking behavior:
-- AreaExtent (8000 * 8000): Size of simulation volume
-- Boids (2000) - Number of boid instances to use 
+- AreaExtent (4000 * 4000 * 400): Size of simulation volume
+- Boids (600) - Number of boid instances to use 
 - Max Velocity (2000) - Maximum velocity for boids
 - Cohesion Distance (1300) - Min separation for cohesion. Smaller value will result in smaller flocks.
 - Separation Distance (200) - Min separation for boids to avoid others.
 - Alignment Distance (300) - Min separation for boids to align  with others
-- Cohesion Factor (1000) - Weight factor for cohesion
+- Cohesion Factor (500) - Weight factor for cohesion
 - Separation Factor (110) - Weight factor for separation. 
 - Alignment Factor (80) - Weight factor for alignment
+- Avoidance Factor (1000)
+- Avoidance Distance (400)
 
 Settings can be modified in BP_Director.
 '2' to speed up sim
